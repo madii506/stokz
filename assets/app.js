@@ -571,7 +571,7 @@ function intro() {
   }
   if (freeze != null) { draw(+freeze); return }
   function frame(now) { const T = (now - t0) / 1000; draw(T); if (T < END) requestAnimationFrame(frame); else done() }
-  requestAnimationFrame(frame);
+  requestAnimationFrame(frame); setTimeout(done, END * 1000 + 1500);
 }
 
 /* ---------- reveal on scroll ---------- */
