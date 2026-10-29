@@ -628,7 +628,6 @@ function tilt() {
     c.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); c.style.setProperty('--my', (y * 100).toFixed(1) + '%');
     c.style.setProperty('--rx', ((.5 - y) * 5).toFixed(2) + 'deg'); c.style.setProperty('--ry', ((x - .5) * 7).toFixed(2) + 'deg');
   }, { passive: true });
-  const hp = $('.hpanel'); hp.addEventListener('pointermove', e => { const r = hp.getBoundingClientRect(); hp.style.setProperty('--hx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%'); hp.style.setProperty('--hy', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%') }, { passive: true });
   $$('.cta .btn').forEach(b => { b.addEventListener('pointermove', e => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${((e.clientX - r.left) / r.width - .5) * 8}px,${((e.clientY - r.top) / r.height - .5) * 8}px)` }); b.addEventListener('pointerleave', () => b.style.transform = '') });
 }
 function paintTape() {
@@ -733,7 +732,7 @@ function motion() {
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { $('#imp').classList.add('live') } }), { threshold: .15 }); io.observe($('#imp'));
   requestAnimationFrame(dealLoop); onScroll();
   $$('#beats li').forEach((li, i) => li.onclick = () => { const sc = $('#deal'), top = sc.getBoundingClientRect().top + scrollY; scrollTo({ top: top + (sc.offsetHeight - innerHeight) * (i * .24 + .14), behavior: 'smooth' }) });
-  inspector(); faqFx(); cursorFx();
+  inspector(); faqFx();
   $('#refCopy').onclick = () => copy(REF.toBase58(), 'Reference key copied');
   $('#vGo').onclick = verifyTx; $('#vSig').onkeydown = e => { if (e.key === 'Enter') verifyTx() };
   addEventListener('keydown', e => { if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !$('#v-home').hidden) { e.preventDefault(); $('#q').focus(); $('#desk').scrollIntoView({ behavior: 'smooth' }) } });

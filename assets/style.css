@@ -455,3 +455,7 @@ body.ready .hl>:nth-child(2){transition-delay:.12s}body.ready .hl>:nth-child(3){
   .sc .act{display:none}.sc:hover .kv{opacity:1}
 }
 .imp.quiet .row,.imp.quiet .bar i{transition:none!important}
+
+/* no mouse-following lights */
+.hpanel:before,.tilt:after{display:none!important}
+#cursor{display:none!important}
