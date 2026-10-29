@@ -21,6 +21,7 @@ window.STOKZ = { ca: '', x: '' };
 </script>
 </head>
 <body class="locked">
+<div id="sprog"></div><div class="bgfx" aria-hidden="true"></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <linearGradient id="gTop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d6f6fc"/><stop offset="1" stop-color="#a6e0f2"/></linearGradient>
 <linearGradient id="gSide" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#80d0e8"/><stop offset="1" stop-color="#4c93ad"/></linearGradient>
@@ -29,8 +30,7 @@ window.STOKZ = { ca: '', x: '' };
 
 <div id="intro" aria-hidden="true">
   <svg id="isvg" viewBox="0 0 1100 520"></svg>
-  <div class="cap" id="icap"><b>OTC FOR STONKFUN STOCKS,</b> <i>IN ONE TRANSACTION.</i></div>
-  <button id="skip">SKIP ›</button>
+  <button id="skip" aria-label="Skip intro"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l7 7-7 7M13 5l7 7-7 7"/></svg></button>
 </div>
 
 <header class="top">
@@ -57,6 +57,7 @@ window.STOKZ = { ca: '', x: '' };
         <div class="hcard" id="hcard"><div class="h"><div><b>Loading StonkFun…</b><small>&nbsp;</small></div></div></div>
       </div>
     </div>
+    <div class="tape" id="tape" aria-label="Live StonkFun stocks"><div class="tt" id="tapeT"></div></div>
     <div class="band card" id="band">
       <div><b id="bTotal">—</b><span>StonkFun stocks listed</span></div>
       <div><b id="bVol">—</b><span>24h volume, top stocks</span></div>
@@ -72,6 +73,25 @@ window.STOKZ = { ca: '', x: '' };
     <div class="card imp" id="imp"><div class="row h"><span>Stock</span><span>Price</span><span>Liquidity</span><span>Price drop</span><span>You lose</span><span>Via Stokz</span><span></span></div></div>
   </div>
 
+
+  <section class="deal-sec" id="deal">
+    <div class="deal-pin">
+      <div class="wrap deal-grid">
+        <div class="deal-copy">
+          <div class="eyebrow">One trade, start to finish</div>
+          <h2 class="dh">Watch a bag change hands.</h2>
+          <ol class="beats" id="beats">
+            <li data-b="0"><i>01</i><div><b>Dumping costs you</b><span id="bDump">A big market sell walks the price down with your own order.</span></div></li>
+            <li data-b="1"><i>02</i><div><b>Pick any bag</b><span>Every StonkFun stock and its biggest holders, live from the chain.</span></div></li>
+            <li data-b="2"><i>03</i><div><b>Sign your half</b><span>Your offer becomes a link. Nothing leaves your wallet.</span></div></li>
+            <li data-b="3"><i>04</i><div><b>They sign. Filled.</b><span>The stock and the SOL swap in one transaction. The chart stays flat.</span></div></li>
+          </ol>
+          <div class="drail"><i id="drail"></i></div>
+        </div>
+        <div class="deal-stage card"><svg id="dstage" viewBox="0 0 640 480"></svg></div>
+      </div>
+    </div>
+  </section>
   <div class="wrap sec reveal" id="how">
     <div class="hd"><div><div class="eyebrow">How it works</div><h2>Two signatures.<br>One transaction.</h2><p>No escrow, no custody, no program holding your bag. A Stokz offer is a Solana transaction both sides sign. Until the second signature lands, nothing moves.</p></div></div>
     <div class="steps">
@@ -127,6 +147,7 @@ window.STOKZ = { ca: '', x: '' };
 <section class="view wrap" id="v-me" hidden></section>
 </main>
 <div id="toast"></div>
+<button id="totop" aria-label="Back to top"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
 <script src="assets/web3.min.js"></script>
 <script src="assets/app.js"></script>
 </body>
