@@ -46,7 +46,7 @@ async function rpc(method, params = []) {
 }
 
 /* ---------- StonkFun + Jupiter data ---------- */
-const S = { map: new Map(), total: null, sol: null, sort: 'mcap', q: '', shown: 18 };
+const S = { map: new Map(), total: null, sol: null, sort: 'mcap', q: '', shown: 18, cat: '' };
 function norm(t) {
   const m = t.market || {};
   return {
@@ -231,24 +231,28 @@ function sorted() {
   let l = [...S.map.values()];
   const q = S.q.trim().toLowerCase();
   if (q) l = l.filter(s => s.mint.toLowerCase() === q || s.sym.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || (s.q && s.q.sym && s.q.sym.toLowerCase() === q));
+  if (S.cat) l = l.filter(s => s.q && s.q.cat === S.cat);
   const k = { mcap: s => s.mcap || 0, vol: s => s.vol || 0, liq: s => s.liq || 0, new: s => s.created || 0 }[S.sort];
   return l.sort((a, b) => k(b) - k(a));
 }
 function paintGrid() {
   const l = sorted(), g = $('#grid');
   if (!l.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1">${S.q ? 'No stock matches “' + esc(S.q) + '” in the loaded list. Paste a contract address to look it up.' : 'No stocks loaded.'}</div>`; $('#moreBtn').hidden = true; return }
-  g.innerHTML = l.slice(0, S.shown).map((s, i) => { const im = s.liq ? impact(s.liq, 10000) : null; return `<a class="card sc tilt" style="--i:${i % 18}" href="#/s/${s.mint}">${s.q && s.q.logo ? `<img class="qlogo" src="${esc(s.q.logo)}" alt="" onerror="this.remove()">` : ''}${coin(s)}<div class="mc num">${fmtUsd(s.mcap)}</div><span class="${s.chg >= 0 ? 'up' : 'dn'} num" style="font-size:13px;font-weight:600">${s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(1) + '% 24h' : '&nbsp;'}</span><div class="kv num"><div><span>24h volume</span><b>${fmtUsd(s.vol)}</b></div><div><span>Liquidity</span><b>${fmtUsd(s.liq)}</b></div><div><span>$10K market sell</span><b class="dn">${im ? '−' + pct(im.drop) : '—'}</b></div><div><span>Via Stokz</span><b class="up">0.0%</b></div></div></a>` }).join('');
+  g.innerHTML = l.slice(0, S.shown).map((s, i) => { const im = s.liq ? impact(s.liq, 10000) : null; return `<a class="card sc tilt" style="--i:${i % 18}" href="#/s/${s.mint}">${s.q && s.q.logo ? `<img class="qlogo" src="${esc(s.q.logo)}" alt="" onerror="this.remove()">` : ''}${coin(s)}<div class="mc num">${fmtUsd(s.mcap)}</div><span class="${s.chg >= 0 ? 'up' : 'dn'} num" style="font-size:13px;font-weight:600">${s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(1) + '% 24h' : '&nbsp;'}</span><div class="kv num"><div><span>24h volume</span><b>${fmtUsd(s.vol)}</b></div><div><span>Liquidity</span><b>${fmtUsd(s.liq)}</b></div><div><span>$10K market sell</span><b class="dn">${im ? '−' + pct(im.drop) : '—'}</b></div><div><span>Via Stokz</span><b class="up">0.0%</b></div></div><div class="act"><span class="g">Biggest bags</span><span data-go="#/new?m=${s.mint}&side=buy">Make offer</span></div></a>` }).join('');
   $('#moreBtn').hidden = l.length <= S.shown;
 }
-function paintImpact() {
-  const size = +($('#impSize .on') || {}).dataset?.v || 10000;
+function paintImpact(quiet) {
+  const size = SIM.usd || 25000;
   const l = [...S.map.values()].filter(s => s.liq > 0).sort((a, b) => (b.mcap || 0) - (a.mcap || 0)).slice(0, 10);
   const mx = Math.max(...l.map(s => impact(s.liq, size).drop), 0.0001);
   const rows = l.map(s => { const im = impact(s.liq, size); return `<a class="row" href="#/s/${s.mint}">${coin(s)}<span class="num">${fmtUsd(s.price)}</span><span class="num">${fmtUsd(s.liq)}</span><span class="num dn"><b>−${pct(im.drop)}</b><div class="bar"><i style="width:${(im.drop / mx * 100).toFixed(1)}%"></i></div></span><span class="num dn">${fmtUsd(size * im.slip, 0)}</span><span class="num up"><b>0.0%</b></span><span><span class="btn sm ghost">Bags →</span></span></a>` }).join('');
-  const imp = $('#imp'), live = imp.classList.contains('live'); imp.classList.remove('live');
+  const imp = $('#imp'), live = imp.classList.contains('live');
+  imp.classList.toggle('quiet', !!quiet); if (!quiet) imp.classList.remove('live');
   imp.innerHTML = `<div class="row h"><span>Stock</span><span>Price</span><span>Liquidity</span><span>Price drop</span><span>You lose</span><span>Via Stokz</span><span></span></div>` + (rows || '<div class="empty" style="border:0">No liquidity data right now.</div>');
   $$('.row:not(.h)', imp).forEach((r, i) => r.style.transitionDelay = (i * 45) + 'ms');
-  if (live) { void imp.offsetWidth; imp.classList.add('live') }
+  if (quiet) setTimeout(() => imp.classList.remove('quiet'), 40);
+  if (live && !quiet) { void imp.offsetWidth; imp.classList.add('live') }
+  const at = $('#impAt'); if (at) at.textContent = fmtUsd(size, 0);
 }
 let heroSize = 25000, heroStock = null;
 function paintHeroCard() {
@@ -515,17 +519,29 @@ function heroChart() {
   const wave = (x, a, ph = 0) => Y + a * (Math.sin((x + ph) / 38) * 30 + Math.sin((x + ph) / 17 + 1) * 10) * Math.max(0, Math.min(1, (190 - x) / 110));
   let t0 = performance.now(), vis = true;
   new IntersectionObserver(e => { vis = e[0].isIntersecting }).observe(svg);
+  // drag the halves together; the loop takes over again when you let go
+  const M = { drag: false, meet: 0, x0: 0, m0: 0, until: 0, flashAt: -9, from: 0 };
+  const svgX = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()).x };
+  svg.addEventListener('pointerdown', e => { M.drag = true; M.x0 = svgX(e); M.m0 = M.meet; svg.setPointerCapture(e.pointerId); svg.classList.add('drag'); const h = $('#hhint'); if (h) h.classList.add('gone') });
+  svg.addEventListener('pointermove', e => { if (!M.drag) return; M.meet = Math.max(0, Math.min(1, M.m0 + (svgX(e) - M.x0) / 200)); if (M.meet > .97 && performance.now() - M.flashAt > 1400) { M.flashAt = performance.now(); M.meet = 1 } });
+  const up = () => { if (!M.drag) return; M.drag = false; svg.classList.remove('drag'); M.until = performance.now() + (M.meet > .97 ? 1600 : 500); M.from = M.meet };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  let loopT = 0, lastNow = performance.now();
   function frame(now) {
-    requestAnimationFrame(frame); if (!vis || document.hidden) return;
-    const T = ((now - t0) / 1000) % 6.4; // 0-2 apart, 2-3 meet, 3-4.6 locked, 4.6-6.4 part
-    const meet = T < 2 ? 0 : T < 3 ? ease(T - 2) : T < 4.6 ? 1 : T < 5.8 ? 1 - ease((T - 4.6) / 1.2) : 0;
-    const a = 1 - meet * 0.15;
+    requestAnimationFrame(frame); const dt = now - lastNow; lastNow = now; if (!vis || document.hidden) return;
+    const manual = M.drag || now < M.until;
+    if (!manual) loopT += dt;
+    const T = (loopT / 1000) % 6.4; // 0-2 apart, 2-3 meet, 3-4.6 locked, 4.6-6.4 part
+    const loopMeet = T < 2 ? 0 : T < 3 ? ease(T - 2) : T < 4.6 ? 1 : T < 5.8 ? 1 - ease((T - 4.6) / 1.2) : 0;
+    if (!manual) M.meet += (loopMeet - M.meet) * Math.min(1, dt / 220);
+    const meet = M.meet, a = 1 - meet * 0.15;
     let d = ''; for (let x = -20; x <= 600; x += 8) d += (x === -20 ? 'M' : 'L') + x + ',' + wave(x, a, now / 30).toFixed(1);
     P.setAttribute('d', d);
     const gap = 120 * (1 - meet) + 4;
     D.setAttribute('transform', `translate(${300 - gap * .9},${Y - 2 - gap * .32})`);
     B.setAttribute('transform', `translate(${300 + gap * .9},${Y + 2 + gap * .32})`);
-    const flash = T >= 3 && T < 4.6 ? Math.max(0, 1 - (T - 3) / 1.2) : 0;
+    const mf = Math.max(0, 1 - (now - M.flashAt) / 1200);
+    const flash = Math.max(mf, !manual && T >= 3 && T < 4.6 ? Math.max(0, 1 - (T - 3) / 1.2) : 0);
     R.setAttribute('opacity', flash.toFixed(2)); R.setAttribute('r', (84 + (1 - flash) * 34).toFixed(1));
     const dx = 40 + ((now / 16) % 520); dot.setAttribute('cx', dx); dot.setAttribute('cy', wave(dx, a, now / 30));
   }
@@ -716,6 +732,143 @@ function motion() {
   $('#totop').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { $('#imp').classList.add('live') } }), { threshold: .15 }); io.observe($('#imp'));
   requestAnimationFrame(dealLoop); onScroll();
+  $$('#beats li').forEach((li, i) => li.onclick = () => { const sc = $('#deal'), top = sc.getBoundingClientRect().top + scrollY; scrollTo({ top: top + (sc.offsetHeight - innerHeight) * (i * .24 + .14), behavior: 'smooth' }) });
+  inspector(); faqFx(); cursorFx();
+  $('#refCopy').onclick = () => copy(REF.toBase58(), 'Reference key copied');
+  $('#vGo').onclick = verifyTx; $('#vSig').onkeydown = e => { if (e.key === 'Enter') verifyTx() };
+  addEventListener('keydown', e => { if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !$('#v-home').hidden) { e.preventDefault(); $('#q').focus(); $('#desk').scrollIntoView({ behavior: 'smooth' }) } });
+  $('#grid').addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); location.hash = g.dataset.go } });
+}
+
+
+/* ---------- dump simulator ---------- */
+const SIM = { s: null, usd: 25000 };
+const simUsdAt = v => { const u = Math.pow(10, 2 + v / 1000 * 4); return u < 1000 ? Math.round(u / 10) * 10 : u < 10000 ? Math.round(u / 50) * 50 : Math.round(u / 500) * 500 };
+const simVal = usd => Math.log10(Math.max(100, Math.min(1e6, usd)) / 100) / 4 * 1000;
+function simInit() {
+  const base = [...S.map.values()].filter(s => s.liq > 0 && s.price && s.img).sort((a, b) => b.mcap - a.mcap);
+  const l = base.slice(0, 7); if (DEAL.s && !l.includes(DEAL.s)) l.push(DEAL.s); else if (base[7]) l.push(base[7]);
+  if (!l.length) return;
+  SIM.s = SIM.s || DEAL.s || l[0];
+  $('#simPick').innerHTML = l.map(s => `<button data-m="${s.mint}" class="${s === SIM.s ? 'on' : ''}"><img src="${esc(s.img)}" alt="" onerror="this.src='assets/img/favicon.png'">$${esc(s.sym)}</button>`).join('');
+  $('#simPick').onclick = e => { const b = e.target.closest('button'); if (!b) return; SIM.s = S.map.get(b.dataset.m); $$('#simPick button').forEach(x => x.classList.toggle('on', x === b)); paintSim(true) };
+  const r = $('#simR'); r.value = simVal(SIM.usd);
+  r.oninput = () => { SIM.usd = simUsdAt(+r.value); paintSim() };
+  $('#simQ').onclick = e => { const b = e.target.closest('button'); if (!b) return; SIM.usd = +b.dataset.v; tweenSlider(simVal(SIM.usd)) };
+  const svg = $('#simCurve'); let drag = false;
+  const toX = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()).x };
+  const fromX = sx => { const D = SIM.dom || [.45, 2.2]; const x = D[0] + (sx - 50) / 410 * (D[1] - D[0]); const f = Math.max(0, Math.min(5, x - 1)); return simUsdAt(simVal(Math.max(100, Math.min(1e6, f * SIM.s.liq / 2)))) };
+  svg.addEventListener('pointerdown', () => { SIM.lock = SIM.dom }, true);
+  svg.addEventListener('pointerdown', e => { drag = true; svg.setPointerCapture(e.pointerId); svg.classList.add('drag'); SIM.usd = fromX(toX(e)); r.value = simVal(SIM.usd); paintSim() });
+  svg.addEventListener('pointermove', e => { if (!drag) return; SIM.usd = fromX(toX(e)); r.value = simVal(SIM.usd); paintSim() });
+  const up = () => { drag = false; SIM.lock = null; svg.classList.remove('drag'); paintSim() }; svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  paintSim(true);
+}
+function tweenSlider(to) { const r = $('#simR'), from = +r.value, t0 = performance.now(); const f = n => { const k = Math.min(1, (n - t0) / 450), v = from + (to - from) * easeIO(k); r.value = v; SIM.usd = k < 1 ? simUsdAt(v) : SIM.usd; paintSim(); if (k < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) }
+let simQ = false;
+function paintSim(bump) {
+  if (simQ && !bump) return; simQ = true;
+  requestAnimationFrame(() => {
+    simQ = false; const s = SIM.s; if (!s) return;
+    const usd = SIM.usd, im = impact(s.liq, usd);
+    $('#simUsd').textContent = '$' + Math.round(usd).toLocaleString('en-US');
+    $('#simDrop').textContent = '−' + pct(im.drop, 2); $('#simGet').textContent = fmtUsd(im.get); $('#simLost').textContent = fmtUsd(usd - im.get);
+    $('#simOtc').textContent = fmtUsd(usd); $('#simKeep').textContent = '+' + fmtUsd(usd - im.get);
+    $('#simR').style.setProperty('--f', (+$('#simR').value / 10) + '%');
+    $$('#simQ button').forEach(b => b.classList.toggle('on', Math.abs(+b.dataset.v - usd) < 1));
+    $('#simGo').href = `#/new?m=${s.mint}&side=sell`; $('#simBags').href = '#/s/' + s.mint;
+    if (bump) $$('.simcmp .col').forEach(c => { c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump') });
+    drawCurve(s, usd, im); paintImpact(true);
+  });
+}
+function drawCurve(s, usd, im) {
+  const f = Math.min(5, usd / (s.liq / 2)), bx = 1 + f, by = 1 / bx;
+  // zoom the axes to the trade (kept steady while dragging)
+  const D = SIM.lock || [.45, Math.min(6.2, Math.max(2.2, bx * 1.22))]; SIM.dom = D;
+  const x0 = D[0], x1 = D[1], ymax = 1 / x0 * 1.04;
+  const X = x => 50 + (x - x0) / (x1 - x0) * 410, Yv = y => 360 - y / ymax * 320;
+  let curve = ''; for (let x = x0; x <= x1 + .0001; x += (x1 - x0) / 120) curve += (curve ? 'L' : 'M') + X(x).toFixed(1) + ',' + Yv(1 / x).toFixed(1);
+  let area = `M${X(1)},${Yv(0)}`; for (let x = 1; x <= bx + .0001; x += Math.max(.01, f / 60)) area += `L${X(x).toFixed(1)},${Yv(1 / x).toFixed(1)}`; area += `L${X(bx).toFixed(1)},${Yv(by).toFixed(1)}L${X(bx).toFixed(1)},${Yv(0)}Z`;
+  const tan = (x, len, col) => { const y = 1 / x, m = -1 / (x * x), dx = len * (x1 - x0) / 5.6 / Math.sqrt(1 + m * m * ((410 / (x1 - x0)) / (320 / ymax)) ** -2 * 0 + m * m); return `<line x1="${X(x - dx)}" y1="${Yv(y - m * dx)}" x2="${X(x + dx)}" y2="${Yv(y + m * dx)}" stroke="${col}" stroke-width="2" stroke-dasharray="5 5"/>` };
+  let grid = ''; for (let i = 0; i <= 4; i++) { const y = 40 + i * 80; grid += `<line x1="50" x2="460" y1="${y}" y2="${y}" stroke="#17303a"/>` }
+  const p1 = s.price * (1 - im.drop), lab = (x, y, a, t, c, anc = 'start') => `<text x="${x}" y="${y}" fill="${c}" font-size="${a}" font-weight="700" font-family="Sora" text-anchor="${anc}">${t}</text>`;
+  $('#simCurve').innerHTML = `${grid}<line x1="50" y1="360" x2="460" y2="360" stroke="#2f4f58"/><line x1="50" y1="30" x2="50" y2="360" stroke="#2f4f58"/>
+  ${lab(56, 26, 11, 'POOL USD SIDE', '#768a93')}${lab(458, 382, 11, 'POOL $' + esc(s.sym) + ' SIDE →', '#768a93', 'end')}
+  <path d="${area}" fill="rgba(251,113,133,.14)"/><path d="${curve}" fill="none" stroke="#c8f0f8" stroke-width="3" stroke-linecap="round"/>
+  ${tan(1, .9, '#90d8f0')}${tan(bx, .9, '#fb7185')}
+  <line x1="${X(1)}" y1="${Yv(1)}" x2="${X(1)}" y2="360" stroke="#90d8f0" stroke-opacity=".35"/><line x1="${X(bx)}" y1="${Yv(by)}" x2="${X(bx)}" y2="360" stroke="#fb7185" stroke-opacity=".5"/>
+  <circle cx="${X(1)}" cy="${Yv(1)}" r="8" fill="#90d8f0"/>${lab(X(1) - 14, Yv(1) - 12, 12.5, 'before ' + fmtUsd(s.price), '#c8f0f8', 'end')}
+  <circle cx="${X(bx)}" cy="${Yv(by)}" r="16" fill="rgba(251,113,133,.18)"/><circle cx="${X(bx)}" cy="${Yv(by)}" r="9" fill="#fb7185" stroke="#071013" stroke-width="3"/>
+  ${lab(X(bx) > 340 ? X(bx) - 4 : X(bx) + 16, Yv(by) - 20, 12.5, 'after ' + fmtUsd(p1), '#fda4b4', X(bx) > 340 ? 'end' : 'start')}
+  ${lab(Math.min(Math.max(X((1 + bx) / 2), 120), 400), 344, 22, '−' + pct(im.drop), '#fb7185', 'middle')}
+  ${f >= 5 ? lab(455, 60, 11, 'off the chart', '#fb7185', 'end') : ''}`;
+}
+
+/* ---------- transaction inspector ---------- */
+const IXD = [
+  { prog: 'System Program', what: 'Moves your one-time nonce forward. The offer was signed against its current value, so it can run once and never again. Cancelling closes the nonce, which kills the offer.', accs: [['Your nonce account', 'w'], ['Recent blockhashes sysvar', ''], ['You, the nonce authority', 's']] },
+  { prog: 'Associated Token Account Program', what: "Creates the buyer's account for this stock if it doesn't exist yet, and does nothing if it does. The buyer pays the ~0.002 SOL rent.", accs: [['Buyer, paying the rent', 'sw'], ["Buyer's token account", 'w'], ['Buyer, the owner', ''], ['Stock mint', ''], ['System Program', ''], ['Token program', '']] },
+  { prog: 'Token or Token-2022 Program', what: "transferChecked moves the exact amount from the seller to the buyer, checked against the mint's decimals. StonkFun reward coins take their transfer fee here.", accs: [["Seller's token account", 'w'], ['Stock mint', ''], ["Buyer's token account", 'w'], ['Seller', 's']] },
+  { prog: 'System Program', what: 'Sends the agreed SOL from the buyer to the seller. The Stokz reference key rides along as a read-only account, so every fill can be found on-chain.', accs: [['Buyer', 'sw'], ['Seller', 'w'], ['Stokz reference key', '']] }
+];
+function inspector() {
+  let cur = 0, auto = true, timer;
+  const show = i => {
+    cur = i; $$('#ixs li').forEach(li => li.classList.toggle('on', +li.dataset.i === i)); $$('#txStrip i').forEach(x => x.classList.toggle('on', +x.dataset.i === i));
+    const d = IXD[i], tag = t => (t.includes('s') ? '<span class="tag s">signer</span>' : '<span></span>') + (t.includes('w') ? '<span class="tag w">writable</span>' : '<span class="tag">read</span>');
+    const el = $('#ixd'); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    el.innerHTML = `<b class="ice">${d.prog}</b><div class="lt" style="margin-top:6px">${d.what}</div><div class="accs">${d.accs.map(a => `<div class="acc"><b>${a[0]}</b>${tag(a[1])}</div>`).join('')}</div>`;
+  };
+  const pick = i => { auto = false; clearInterval(timer); show(i) };
+  $('#ixs').onclick = e => { const li = e.target.closest('li'); if (li) pick(+li.dataset.i) };
+  $('#txStrip').onclick = e => { const x = e.target.closest('i'); if (x) pick(+x.dataset.i) };
+  show(0);
+  let vis = false; new IntersectionObserver(es => { vis = es[0].isIntersecting }).observe($('#ixs'));
+  timer = setInterval(() => { if (auto && vis && !document.hidden) show((cur + 1) % 4) }, 3200);
+}
+
+/* ---------- desk categories ---------- */
+function paintCats() {
+  const cnt = {}; for (const s of S.map.values()) if (s.q && s.q.cat) cnt[s.q.cat] = (cnt[s.q.cat] || 0) + 1;
+  const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 7); if (!top.length) return;
+  $('#cats').innerHTML = `<button data-c="" class="${S.cat ? '' : 'on'}">All<b>${S.map.size}</b></button>` + top.map(([c, n]) => `<button data-c="${esc(c)}" class="${S.cat === c ? 'on' : ''}">${esc(c)}<b>${n}</b></button>`).join('');
+  $('#cats').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.cat = b.dataset.c; S.shown = 18; $$('#cats button').forEach(x => x.classList.toggle('on', x === b)); paintGrid() };
+}
+
+/* ---------- verify any transaction ---------- */
+async function verifyTx() {
+  const sig = $('#vSig').value.trim(), out = $('#vOut');
+  if (!/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(sig)) { out.innerHTML = '<div class="note warn">That doesn\'t look like a Solana transaction signature.</div>'; return }
+  out.innerHTML = '<div class="note">Reading the chain…</div>';
+  try {
+    const t = await rpc('getTransaction', [sig, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' }]);
+    if (!t) { out.innerHTML = '<div class="note warn">Not found on-chain. If it was just sent, try again in a few seconds.</div>'; return }
+    const keys = t.transaction.message.accountKeys.map(k => k.pubkey || k), ref = keys.includes(REF.toBase58());
+    const ins = t.transaction.message.instructions.map(i => i.parsed).filter(Boolean);
+    const tk = ins.find(p => p.type === 'transferChecked'), pay = ins.find(p => p.type === 'transfer' && p.info && p.info.lamports);
+    if (!ref) { out.innerHTML = '<div class="note warn">Not a Stokz fill: this transaction doesn\'t carry the Stokz reference key.</div>'; return }
+    if (t.meta && t.meta.err) { out.innerHTML = `<div class="note warn">A Stokz transaction, but it failed on-chain, so nothing moved. <a class="ice" href="${solscan(sig, 'tx')}" target="_blank" rel="noopener">Solscan ↗</a></div>`; return }
+    const st = tk && S.map.get(tk.info.mint);
+    out.innerHTML = `<div class="note ok"><b>Stokz fill, settled.</b> ${tk ? fmtNum(tk.info.tokenAmount.uiAmount) + ' ' + (st ? '$' + esc(st.sym) : short(tk.info.mint)) : ''} for ${pay ? fmtSol(pay.info.lamports / 1e9) : '—'}, ${short(tk && (tk.info.authority || tk.info.multisigAuthority))} → ${short(pay && pay.info.source)}, ${t.blockTime ? new Date(t.blockTime * 1000).toLocaleString() : ''}. <a class="ice" href="${solscan(sig, 'tx')}" target="_blank" rel="noopener">Solscan ↗</a></div>`;
+  } catch (e) { out.innerHTML = `<div class="note warn">Couldn't read the chain right now (${esc(e.message)}).</div>` }
+}
+
+/* ---------- faq: search + smooth open ---------- */
+function faqFx() {
+  const ds = $$('.faq details');
+  ds.forEach(d => { const sm = $('summary', d), p = $('p', d); sm.addEventListener('click', e => { e.preventDefault(); if (RM) { d.open = !d.open; return } if (d.open) { const h = p.scrollHeight; p.animate([{ height: h + 'px', opacity: 1 }, { height: '0px', opacity: 0 }], { duration: 240, easing: 'ease' }).onfinish = () => d.open = false } else { d.open = true; const h = p.scrollHeight; p.animate([{ height: '0px', opacity: 0 }, { height: h + 'px', opacity: 1 }], { duration: 340, easing: 'cubic-bezier(.2,.7,.2,1)' }) } }) });
+  $('#fq').oninput = e => { const q = e.target.value.trim().toLowerCase(); let n = 0; ds.forEach(d => { const m = !q || d.textContent.toLowerCase().includes(q); d.hidden = !m; if (m) n++; if (q.length >= 3 && m) d.open = true }); $('#fqNone').hidden = n > 0 };
+  $('#fAll').onclick = () => { const open = !ds.every(d => d.open); ds.forEach(d => d.open = open); $('#fAll').textContent = open ? 'Close all' : 'Open all' };
+}
+
+/* ---------- cursor follower ---------- */
+function cursorFx() {
+  if (RM || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  const c = $('#cursor'); let x = -100, y = -100, tx = -100, ty = -100;
+  addEventListener('pointermove', e => { tx = e.clientX; ty = e.clientY; c.classList.add('on'); const hot = e.target.closest && e.target.closest('a,button,input,summary,label,.tilt,#hchart,#simCurve,#ixs li,#txStrip i,#beats li'); c.classList.toggle('hot', !!hot) }, { passive: true });
+  addEventListener('pointerdown', () => c.classList.add('down')); addEventListener('pointerup', () => c.classList.remove('down'));
+  document.addEventListener('mouseleave', () => c.classList.remove('on'));
+  (function f() { x += (tx - x) * .22; y += (ty - y) * .22; c.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`; requestAnimationFrame(f) })();
 }
 
 /* ---------- top bar extras ---------- */
@@ -742,7 +895,6 @@ window.__stokz = { parseOffer, buildTrade, b64url, fromB64url, S };
 async function boot() {
   intro(); topbar(); heroChart(); reveals(); motion();
   window.addEventListener('hashchange', route); route();
-  $$('#impSize button').forEach(b => b.onclick = () => { $$('#impSize button').forEach(x => x.classList.toggle('on', x === b)); paintImpact() });
   $$('.tools .chip').forEach(b => b.onclick = () => { $$('.tools .chip').forEach(x => x.classList.toggle('on', x === b)); S.sort = b.dataset.sort; S.shown = 18; paintGrid() });
   $('#moreBtn').onclick = () => { S.shown += 18; paintGrid() };
   let qt; $('#q').oninput = e => { S.q = e.target.value; S.shown = 18; paintGrid(); clearTimeout(qt); const v = S.q.trim(); if (v.length >= 32) qt = setTimeout(async () => { const s = await stockByMint(v).catch(() => null); if (s) paintGrid() }, 300) };
@@ -750,7 +902,7 @@ async function boot() {
   if (last) { const w = providers().find(p => p[0] === last); if (w) w[1].connect({ onlyIfTrusted: true }).then(r => { const k = (r && r.publicKey) || w[1].publicKey; if (k) { WAL.pk = new PublicKey(k.toString()); WAL.p = w[1]; WAL.name = w[0]; paintWallet(); if (location.hash.startsWith('#/')) route() } }).catch(() => {}) }
   try { await loadStocks() } catch (e) { $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1">StonkFun didn't answer (${esc(e.message)}). Refresh in a moment.</div>`; $('#hcard').innerHTML = '<div class="h"><div><b>StonkFun is not answering right now</b><small>Refresh in a moment</small></div></div>'; return }
   heroStock = [...S.map.values()].filter(s => s.liq > 0 && s.img).sort((a, b) => (b.mcap || 0) - (a.mcap || 0))[0] || [...S.map.values()][0];
-  paintHeroCard(); paintBand(); paintImpact(); paintGrid(); paintFills(); paintTape(); dealData();
+  paintHeroCard(); paintBand(); paintGrid(); paintFills(); paintTape(); dealData(); simInit(); paintImpact(); paintCats();
   loadFills();
   setInterval(async () => { try { const fresh = await sfList('marketCap', 60); for (const s of fresh) { const o = S.map.get(s.mint); if (o) Object.assign(o, { price: s.price, mcap: s.mcap, vol: s.vol, chg: s.chg, liq: s.liq || o.liq }) } paintBand(); paintImpact(); paintHeroCard(); paintTape(); if (!S.q) paintGrid() } catch {} }, 60000);
 }
