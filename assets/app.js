@@ -237,7 +237,7 @@ function sorted() {
 function paintGrid() {
   const l = sorted(), g = $('#grid');
   if (!l.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1">${S.q ? 'No stock matches “' + esc(S.q) + '” in the loaded list. Paste a contract address to look it up.' : 'No stocks loaded.'}</div>`; $('#moreBtn').hidden = true; return }
-  g.innerHTML = l.slice(0, S.shown).map(s => { const im = s.liq ? impact(s.liq, 10000) : null; return `<a class="card sc" href="#/s/${s.mint}">${s.q && s.q.logo ? `<img class="qlogo" src="${esc(s.q.logo)}" alt="" onerror="this.remove()">` : ''}${coin(s)}<div class="mc num">${fmtUsd(s.mcap)}</div><span class="${s.chg >= 0 ? 'up' : 'dn'} num" style="font-size:13px;font-weight:600">${s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(1) + '% 24h' : '&nbsp;'}</span><div class="kv num"><div><span>24h volume</span><b>${fmtUsd(s.vol)}</b></div><div><span>Liquidity</span><b>${fmtUsd(s.liq)}</b></div><div><span>$10K market sell</span><b class="dn">${im ? '−' + pct(im.drop) : '—'}</b></div><div><span>Via Stokz</span><b class="up">0.0%</b></div></div></a>` }).join('');
+  g.innerHTML = l.slice(0, S.shown).map((s, i) => { const im = s.liq ? impact(s.liq, 10000) : null; return `<a class="card sc tilt" style="--i:${i % 18}" href="#/s/${s.mint}">${s.q && s.q.logo ? `<img class="qlogo" src="${esc(s.q.logo)}" alt="" onerror="this.remove()">` : ''}${coin(s)}<div class="mc num">${fmtUsd(s.mcap)}</div><span class="${s.chg >= 0 ? 'up' : 'dn'} num" style="font-size:13px;font-weight:600">${s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(1) + '% 24h' : '&nbsp;'}</span><div class="kv num"><div><span>24h volume</span><b>${fmtUsd(s.vol)}</b></div><div><span>Liquidity</span><b>${fmtUsd(s.liq)}</b></div><div><span>$10K market sell</span><b class="dn">${im ? '−' + pct(im.drop) : '—'}</b></div><div><span>Via Stokz</span><b class="up">0.0%</b></div></div></a>` }).join('');
   $('#moreBtn').hidden = l.length <= S.shown;
 }
 function paintImpact() {
@@ -245,7 +245,10 @@ function paintImpact() {
   const l = [...S.map.values()].filter(s => s.liq > 0).sort((a, b) => (b.mcap || 0) - (a.mcap || 0)).slice(0, 10);
   const mx = Math.max(...l.map(s => impact(s.liq, size).drop), 0.0001);
   const rows = l.map(s => { const im = impact(s.liq, size); return `<a class="row" href="#/s/${s.mint}">${coin(s)}<span class="num">${fmtUsd(s.price)}</span><span class="num">${fmtUsd(s.liq)}</span><span class="num dn"><b>−${pct(im.drop)}</b><div class="bar"><i style="width:${(im.drop / mx * 100).toFixed(1)}%"></i></div></span><span class="num dn">${fmtUsd(size * im.slip, 0)}</span><span class="num up"><b>0.0%</b></span><span><span class="btn sm ghost">Bags →</span></span></a>` }).join('');
-  $('#imp').innerHTML = `<div class="row h"><span>Stock</span><span>Price</span><span>Liquidity</span><span>Price drop</span><span>You lose</span><span>Via Stokz</span><span></span></div>` + (rows || '<div class="empty" style="border:0">No liquidity data right now.</div>');
+  const imp = $('#imp'), live = imp.classList.contains('live'); imp.classList.remove('live');
+  imp.innerHTML = `<div class="row h"><span>Stock</span><span>Price</span><span>Liquidity</span><span>Price drop</span><span>You lose</span><span>Via Stokz</span><span></span></div>` + (rows || '<div class="empty" style="border:0">No liquidity data right now.</div>');
+  $$('.row:not(.h)', imp).forEach((r, i) => r.style.transitionDelay = (i * 45) + 'ms');
+  if (live) { void imp.offsetWidth; imp.classList.add('live') }
 }
 let heroSize = 25000, heroStock = null;
 function paintHeroCard() {
@@ -260,9 +263,9 @@ function paintHeroCard() {
 }
 function paintBand() {
   const l = [...S.map.values()];
-  $('#bTotal').textContent = S.total ? S.total.toLocaleString('en-US') : l.length;
-  $('#bVol').textContent = fmtUsd(l.reduce((a, s) => a + (s.vol || 0), 0));
-  $('#bLiq').textContent = fmtUsd(l.reduce((a, s) => a + (s.liq || 0), 0));
+  countTo($('#bTotal'), S.total || l.length, n => Math.round(n).toLocaleString('en-US'));
+  countTo($('#bVol'), l.reduce((a, s) => a + (s.vol || 0), 0), fmtUsd);
+  countTo($('#bLiq'), l.reduce((a, s) => a + (s.liq || 0), 0), fmtUsd);
 }
 
 /* ---------- fills feed (by reference key) ---------- */
@@ -287,7 +290,7 @@ function paintFills() {
   const el = $('#fillList');
   if (FILLS.err && !FILLS.list) { el.innerHTML = `<div class="empty">Couldn't read the chain right now (${esc(FILLS.err)}). Every fill is public: <a class="ice" href="${solscan(REF.toBase58())}" target="_blank" rel="noopener">reference key on Solscan</a>.</div>`; $('#bFills').textContent = '—'; $('#bSol').textContent = '—'; return }
   if (!FILLS.list) return;
-  $('#bFills').textContent = FILLS.count; $('#bSol').textContent = FILLS.list.length ? fmtSol(FILLS.list.reduce((a, f) => a + f.sol, 0)) : '0 SOL';
+  countTo($('#bFills'), FILLS.count, n => Math.round(n)); $('#bSol').textContent = FILLS.list.length ? fmtSol(FILLS.list.reduce((a, f) => a + f.sol, 0)) : '0 SOL';
   if (!FILLS.list.length) { el.innerHTML = '<div class="empty">No fills yet. The first settled offer lights up here.</div>'; return }
   el.innerHTML = FILLS.list.map(f => { const s = S.map.get(f.mint); return `<div class="fl"><div>${s ? coin(s) : `<span class="mono">${short(f.mint)}</span>`}</div><div class="num"><b>${fmtNum(f.amount)}</b><div class="mut" style="font-size:12px">${s ? '$' + esc(s.sym) : 'tokens'}</div></div><div class="num"><b>${fmtSol(f.sol)}</b><div class="mut" style="font-size:12px">${s && s.price && S.sol ? 'mkt ' + fmtUsd(f.amount * s.price) : ''}</div></div><div class="mut" style="font-size:12.5px">${short(f.seller)} → ${short(f.buyer)}</div><a class="btn sm ghost" href="${solscan(f.sig, 'tx')}" target="_blank" rel="noopener">${ago(f.t)} ↗</a></div>` }).join('');
 }
@@ -532,37 +535,39 @@ function heroChart() {
 /* ---------- intro: two halves of a deal meet on the chart, the line goes flat ---------- */
 function intro() {
   const el = $('#intro'); const freeze = new URLSearchParams(location.search).get('it');
-  const done = () => { if (el.classList.contains('out')) return; el.classList.add('out'); document.body.classList.remove('locked'); setTimeout(() => el.remove(), 800) };
-  if (location.hash.length > 2 && location.hash !== '#/' && freeze == null) { el.remove(); document.body.classList.remove('locked'); return }
+  const done = () => { if (el.classList.contains('out')) return; el.classList.add('out'); document.body.classList.remove('locked'); setReady(); setTimeout(() => el.remove(), 800) };
+  if (location.hash.length > 2 && location.hash !== '#/' && freeze == null) { el.remove(); document.body.classList.remove('locked'); setReady(); return }
   if (matchMedia('(prefers-reduced-motion: reduce)').matches && freeze == null) { done(); return }
   $('#skip').onclick = done;
   const svg = $('#isvg');
+  const SP = Array.from({ length: 22 }, (_, i) => `<circle class="isp" r="${2 + (i % 3)}" fill="${i % 4 ? '#90d8f0' : '#39d6a3'}" opacity="0"/>`).join('');
   svg.innerHTML = `<defs><radialGradient id="ig"><stop offset="0" stop-color="#90d8f0" stop-opacity=".45"/><stop offset="1" stop-color="#90d8f0" stop-opacity="0"/></radialGradient></defs>
   <circle id="iglow" cx="550" cy="260" r="260" fill="url(#ig)" opacity="0"/>
   <path id="iline" fill="none" stroke="#f3f8f8" stroke-opacity=".55" stroke-width="3" stroke-dasharray="14 11" stroke-linecap="round"/>
-  <g id="idome"><path d="M-110,0 A110,110 0 0 1 110,0 Z" fill="url(#gSide)" transform="translate(6,12)"/><path d="M-110,0 A110,110 0 0 1 110,0 Z" fill="url(#gTop)"/></g>
-  <g id="ibowl"><path d="M-110,0 A110,110 0 0 0 110,0 Z" fill="url(#gSide)" transform="translate(6,12)"/><path d="M-110,0 A110,110 0 0 0 110,0 Z" fill="url(#gTop)"/></g>
-  <circle id="iring" cx="550" cy="260" r="118" fill="none" stroke="#39d6a3" stroke-width="3" opacity="0"/>
-  <text id="ifill" x="550" y="430" text-anchor="middle" fill="#39d6a3" font-family="Sora" font-weight="700" font-size="15" letter-spacing="4" opacity="0">FILLED · PRICE MOVE 0.00%</text>
-  <text id="iword" x="580" y="294" fill="#f3f8f8" font-family="Sora" font-weight="800" font-size="104" letter-spacing="-6" opacity="0">stokz</text>`;
-  const L = $('#iline'), Dm = $('#idome'), Bw = $('#ibowl'), Rg = $('#iring'), Fl = $('#ifill'), Wd = $('#iword'), Gl = $('#iglow'), cap = $('#icap');
+  <g id="iall"><g id="idome"><path d="M-110,0 A110,110 0 0 1 110,0 Z" fill="url(#gSide)" transform="translate(6,12)"/><path d="M-110,0 A110,110 0 0 1 110,0 Z" fill="url(#gTop)"/></g>
+  <g id="ibowl"><path d="M-110,0 A110,110 0 0 0 110,0 Z" fill="url(#gSide)" transform="translate(6,12)"/><path d="M-110,0 A110,110 0 0 0 110,0 Z" fill="url(#gTop)"/></g></g>
+  <circle id="iring" cx="550" cy="260" r="118" fill="none" stroke="#39d6a3" stroke-width="3" opacity="0"/><circle id="iring2" cx="550" cy="260" r="118" fill="none" stroke="#90d8f0" stroke-width="1.5" opacity="0"/>${SP}`;
+  const L = $('#iline'), Dm = $('#idome'), Bw = $('#ibowl'), Rg = $('#iring'), Rg2 = $('#iring2'), Gl = $('#iglow'), All = $('#iall'), sparks = $$('.isp', svg);
   const Y = 260, ease = t => t <= 0 ? 0 : t >= 1 ? 1 : t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, cl = (a, b, t) => Math.max(0, Math.min(1, (t - a) / (b - a)));
-  const wave = (x, a) => Y + a * (Math.sin(x / 50) * 70 + Math.sin(x / 21 + 2) * 22);
-  const END = 4.9; let t0 = performance.now();
+  const back = t => { const c = 1.70158; t = Math.max(0, Math.min(1, t)); return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2) };
+  const wave = (x, a, ph) => Y + a * (Math.sin((x + ph) / 50) * 70 + Math.sin((x + ph) / 21 + 2) * 22);
+  const END = 4.35; let t0 = performance.now();
   function draw(T) {
-    const draw = ease(cl(0, 1.1, T)), flat = ease(cl(2.05, 2.75, T)), meet = ease(cl(0.7, 2.0, T)), split = ease(cl(3.15, 4.0, T));
-    let d = ''; const xmax = -40 + draw * 1180;
-    for (let x = -40; x <= xmax; x += 10) d += (x === -40 ? 'M' : 'L') + x + ',' + wave(x, 1 - flat).toFixed(1);
-    L.setAttribute('d', d || 'M0,0'); L.setAttribute('stroke-opacity', (.55 * (1 - split * .7)).toFixed(2));
-    const gap = 520 * (1 - meet) + 6, lerp = (a, b) => a + (b - a) * split;
-    Dm.setAttribute('transform', `translate(${lerp(550 - gap, 326)},${Y - 3}) scale(${1 - split * .42})`);
-    Bw.setAttribute('transform', `translate(${lerp(550 + gap * .9, 474)},${Y + 3}) scale(${1 - split * .42})`);
-    Dm.style.opacity = Bw.style.opacity = Math.min(1, cl(0.5, 0.9, T)).toFixed(2);
-    const fl = T > 2.0 && T < 3.6 ? Math.sin(Math.PI * cl(2.0, 3.6, T)) : 0;
-    Rg.setAttribute('opacity', fl.toFixed(2)); Rg.setAttribute('r', (118 + cl(2.0, 3.6, T) * 60).toFixed(1)); Gl.setAttribute('opacity', (fl * .9 + split * .3).toFixed(2));
-    Fl.setAttribute('opacity', (T > 2.2 && T < 3.3 ? Math.min(1, (T - 2.2) * 4) * Math.min(1, (3.3 - T) * 4) : 0).toFixed(2));
-    Wd.setAttribute('opacity', ease(cl(3.5, 4.1, T)).toFixed(2)); Wd.setAttribute('x', (580 + (1 - ease(cl(3.5, 4.1, T))) * 30).toFixed(1));
-    cap.classList.toggle('on', T > 3.7);
+    const drawn = ease(cl(0, 1.0, T)), flat = ease(cl(1.95, 2.6, T)), meet = back(cl(0.6, 1.95, T)), split = ease(cl(2.9, 3.6, T)), zoom = ease(cl(3.7, 4.35, T));
+    let d = ''; const xmax = -40 + drawn * 1180;
+    for (let x = -40; x <= xmax; x += 10) d += (x === -40 ? 'M' : 'L') + x + ',' + wave(x, 1 - flat, T * 60).toFixed(1);
+    L.setAttribute('d', d || 'M0,0'); L.setAttribute('stroke-opacity', (.55 * (1 - split * .55)).toFixed(2));
+    const gap = 560 * (1 - meet) + 6, lerp = (a, b) => a + (b - a) * split, rot = (1 - meet) * 28;
+    Dm.setAttribute('transform', `translate(${lerp(550 - gap, 454)},${Y - 3 - (1 - meet) * 60}) rotate(${-rot}) scale(${1 - split * .24})`);
+    Bw.setAttribute('transform', `translate(${lerp(550 + gap * .9, 646)},${Y + 3 + (1 - meet) * 60}) rotate(${-rot}) scale(${1 - split * .24})`);
+    Dm.style.opacity = Bw.style.opacity = Math.min(1, cl(0.45, 0.85, T)).toFixed(2);
+    All.setAttribute('transform', `translate(550 ${Y}) scale(${1 + zoom * .5}) translate(-550 -${Y})`); All.style.opacity = (1 - zoom).toFixed(2);
+    const ft = cl(1.95, 3.2, T), fl = T > 1.95 && T < 3.2 ? Math.sin(Math.PI * ft) : 0;
+    Rg.setAttribute('opacity', fl.toFixed(2)); Rg.setAttribute('r', (118 + ft * 90).toFixed(1));
+    Rg2.setAttribute('opacity', (fl * .7).toFixed(2)); Rg2.setAttribute('r', (118 + ease(ft) * 190).toFixed(1));
+    Gl.setAttribute('opacity', (fl * .9 + split * .35 * (1 - zoom)).toFixed(2));
+    const st = cl(1.95, 3.0, T);
+    sparks.forEach((c, i) => { const a = i / sparks.length * Math.PI * 2 + i * .37, r = 120 + ease(st) * (90 + (i % 5) * 34); c.setAttribute('cx', (550 + Math.cos(a) * r).toFixed(1)); c.setAttribute('cy', (Y + Math.sin(a) * r * .8).toFixed(1)); c.setAttribute('opacity', (st > 0 && st < 1 ? (1 - st) : 0).toFixed(2)) });
   }
   if (freeze != null) { draw(+freeze); return }
   function frame(now) { const T = (now - t0) / 1000; draw(T); if (T < END) requestAnimationFrame(frame); else done() }
@@ -571,6 +576,147 @@ function intro() {
 
 /* ---------- reveal on scroll ---------- */
 function reveals() { const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('shown'); io.unobserve(e.target) } }), { threshold: .08 }); $$('.reveal').forEach(x => io.observe(x)) }
+
+
+/* ---------- motion & scroll ---------- */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp01 = v => Math.max(0, Math.min(1, v)), seg = (p, a, b) => clamp01((p - a) / (b - a));
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, easeO = t => 1 - Math.pow(1 - t, 3);
+let readyQ = [];
+function setReady() { if (document.body.classList.contains('ready')) return; document.body.classList.add('ready'); readyQ.forEach(f => f()); readyQ = [] }
+const whenReady = f => document.body.classList.contains('ready') ? f() : readyQ.push(f);
+function countTo(el, to, fmt) {
+  if (!el) return; if (to == null || !isFinite(to)) { el.textContent = '—'; return }
+  const from = +(el.dataset.v || 0); el.dataset.v = to;
+  if (RM || from === to) { el.textContent = fmt(to); return }
+  whenReady(() => { const t0 = performance.now(), d = 1500; const f = n => { const k = Math.min(1, (n - t0) / d); el.textContent = fmt(from + (to - from) * easeO(k)); if (k < 1) requestAnimationFrame(f) }; requestAnimationFrame(f) });
+}
+function splitWords() {
+  $$('.sec h2, .dh').forEach(h => {
+    if (h.dataset.sp) return; h.dataset.sp = 1;
+    const walk = n => [...n.childNodes].forEach(c => {
+      if (c.nodeType === 3) { const fr = document.createDocumentFragment(); c.textContent.split(/(\s+)/).forEach(w => { if (!w) return; if (/^\s+$/.test(w)) { fr.appendChild(document.createTextNode(' ')); return } const o = document.createElement('span'); o.className = 'wd'; const i = document.createElement('span'); i.textContent = w; o.appendChild(i); fr.appendChild(o) }); c.replaceWith(fr) }
+      else if (c.nodeType === 1 && c.tagName !== 'BR') walk(c);
+    });
+    walk(h); $$('.wd>span', h).forEach((x, k) => x.style.transitionDelay = (k * 55) + 'ms');
+  });
+}
+function tilt() {
+  if (RM || matchMedia('(hover: none)').matches) return;
+  let last = null;
+  const reset = c => { c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg') };
+  document.addEventListener('pointermove', e => {
+    const c = e.target.closest ? e.target.closest('.tilt') : null;
+    if (last && last !== c) reset(last); last = c; if (!c) return;
+    const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    c.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); c.style.setProperty('--my', (y * 100).toFixed(1) + '%');
+    c.style.setProperty('--rx', ((.5 - y) * 5).toFixed(2) + 'deg'); c.style.setProperty('--ry', ((x - .5) * 7).toFixed(2) + 'deg');
+  }, { passive: true });
+  const hp = $('.hpanel'); hp.addEventListener('pointermove', e => { const r = hp.getBoundingClientRect(); hp.style.setProperty('--hx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%'); hp.style.setProperty('--hy', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%') }, { passive: true });
+  $$('.cta .btn').forEach(b => { b.addEventListener('pointermove', e => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${((e.clientX - r.left) / r.width - .5) * 8}px,${((e.clientY - r.top) / r.height - .5) * 8}px)` }); b.addEventListener('pointerleave', () => b.style.transform = '') });
+}
+function paintTape() {
+  const l = [...S.map.values()].filter(s => s.price && s.img).sort((a, b) => (b.vol || 0) - (a.vol || 0)).slice(0, 24); if (!l.length) return;
+  const item = s => { const im = s.liq ? impact(s.liq, 10000) : null; return `<a class="ti num" href="#/s/${s.mint}"><img src="${esc(s.img)}" alt="" loading="lazy" onerror="this.src='assets/img/favicon.png'"><b>$${esc(s.sym)}</b><span>${fmtUsd(s.price)}</span>${s.chg != null ? `<span class="${s.chg >= 0 ? 'up' : 'dn'}">${s.chg >= 0 ? '▲' : '▼'} ${Math.abs(s.chg).toFixed(1)}%</span>` : ''}${im ? `<span class="mut">$10K dump <span class="dn">−${pct(im.drop)}</span></span>` : ''}</a>` };
+  const html = l.map(item).join(''); const tt = $('#tapeT'); tt.innerHTML = html + html; tt.style.animationDuration = (l.length * 3.2) + 's';
+}
+/* nav ink + scroll spy */
+function spy() {
+  const nav = $('#nav'); if (!nav || getComputedStyle(nav).display === 'none') return;
+  let ink = $('.ink', nav); if (!ink) { ink = document.createElement('span'); ink.className = 'ink'; nav.prepend(ink) }
+  let on = null;
+  if (!$('#v-home').hidden) { for (const [id, href] of [['faq', '#faq'], ['fills', '#fills'], ['desk', '#desk'], ['how', '#how'], ['deal', '#how']]) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top < innerHeight * .45) { on = href; break } } }
+  else if (location.hash === '#/me') on = '#/me';
+  const a = on && $(`a[href="${on}"]`, nav);
+  $$('a', nav).forEach(x => x.classList.toggle('on', x === a));
+  if (a) { ink.style.opacity = 1; ink.style.width = a.offsetWidth + 'px'; ink.style.transform = `translateX(${a.offsetLeft}px)` } else ink.style.opacity = 0;
+}
+/* the pinned "watch a bag change hands" story */
+const DEAL = { built: false, s: null, bags: null, vis: false, p: 0 };
+function buildDeal() {
+  const svg = $('#dstage'); if (!svg || DEAL.built) return; DEAL.built = true;
+  let grid = ''; for (let y = 96; y <= 440; y += 68) grid += `<line x1="24" x2="616" y1="${y}" y2="${y}" stroke="#17303a" stroke-dasharray="2 6"/>`;
+  const rows = [0, 1, 2].map(i => `<g class="drow" transform="translate(372,${108 + i * 56})"><rect width="236" height="46" rx="12" fill="#0a161a" stroke="#2f4f58"/><circle cx="24" cy="23" r="11" fill="${['#69aac1', '#a4c5cf', '#2f4f58'][i]}"/><text x="44" y="20" fill="#f3f8f8" font-size="12.5" font-weight="700" font-family="ui-monospace,Menlo,monospace" class="dra">reading…</text><text x="44" y="36" fill="#768a93" font-size="11.5" font-family="Sora" class="drb"> </text><text x="224" y="28" text-anchor="end" fill="#90d8f0" font-size="11" font-weight="700" font-family="Sora">#${i + 1}</text></g>`).join('');
+  svg.innerHTML = `<defs><radialGradient id="dg"><stop offset="0" stop-color="#90d8f0" stop-opacity=".5"/><stop offset="1" stop-color="#90d8f0" stop-opacity="0"/></radialGradient></defs>${grid}
+  <text id="dSym" x="30" y="50" fill="#f3f8f8" font-size="18" font-weight="800" font-family="Sora">$—</text><text id="dPx" x="30" y="74" fill="#a4c5cf" font-size="13" font-family="Sora"> </text>
+  <text id="dImp" x="610" y="50" text-anchor="end" fill="#fb7185" font-size="13" font-weight="700" font-family="Sora" opacity="0"> </text>
+  <circle id="dGlow" cx="320" cy="300" r="150" fill="url(#dg)" opacity="0"/>
+  <path id="dLine" fill="none" stroke="#c8f0f8" stroke-opacity=".7" stroke-width="3" stroke-dasharray="12 9" stroke-linecap="round"/>
+  <path id="dDump" fill="none" stroke-width="3.5" stroke-linecap="round"/>
+  <g id="dSell" opacity="0"><rect x="-52" y="-16" width="104" height="32" rx="10" fill="#2a1219" stroke="#fb7185"/><text y="5" text-anchor="middle" fill="#fb7185" font-size="12" font-weight="800" font-family="Sora" letter-spacing="1">SELL $25K</text><path d="M0,22 v26 M-8,40 l8,9 8,-9" stroke="#fb7185" stroke-width="2.5" fill="none" stroke-linecap="round"/></g>
+  <g id="dBags">${rows}<rect id="dHi" x="368" y="104" width="244" height="54" rx="14" fill="none" stroke="#39d6a3" stroke-width="2" opacity="0"/><circle id="dCur" r="7" fill="#39d6a3" opacity="0"/></g>
+  <g id="dDome" opacity="0"><path d="M-70,0 A70,70 0 0 1 70,0 Z" fill="url(#gSide)" transform="translate(4,9)"/><path d="M-70,0 A70,70 0 0 1 70,0 Z" fill="url(#gTop)"/></g>
+  <g id="dBowl" opacity="0"><path d="M-70,0 A70,70 0 0 0 70,0 Z" fill="url(#gSide)" transform="translate(4,9)"/><path d="M-70,0 A70,70 0 0 0 70,0 Z" fill="url(#gTop)"/></g>
+  <g id="dLink" opacity="0"><rect x="-62" y="-17" width="124" height="34" rx="17" fill="#102127" stroke="#90d8f0"/><path d="M-40,0 h10 M-44,-5 a5,5 0 0 0 0,10 h6 M-26,-5 a5,5 0 0 1 0,10 h-6" stroke="#90d8f0" stroke-width="2" fill="none" stroke-linecap="round"/><text x="12" y="5" text-anchor="middle" fill="#c8f0f8" font-size="12" font-weight="700" font-family="Sora">offer link</text></g>
+  <circle id="dRing" cx="320" cy="300" r="80" fill="none" stroke="#39d6a3" stroke-width="2.5" opacity="0"/>
+  <text id="dFilled" x="320" y="408" text-anchor="middle" fill="#39d6a3" font-size="15" font-weight="800" font-family="Sora" letter-spacing="3" opacity="0">FILLED</text>
+  <text id="dFilled2" x="320" y="430" text-anchor="middle" fill="#a4c5cf" font-size="12" font-family="Sora" opacity="0">one transaction · price move 0.00%</text>`;
+}
+function dealData() {
+  const all = [...S.map.values()].filter(s => s.liq > 0 && s.price && s.mcap);
+  const pick = all.filter(s => impact(s.liq, 25000).drop >= .08).sort((a, b) => b.mcap - a.mcap)[0] || heroStock; if (!pick) return;
+  DEAL.s = pick; const im = impact(pick.liq, 25000);
+  $('#dSym').textContent = '$' + pick.sym; $('#dPx').textContent = fmtUsd(pick.price) + (pick.q ? ' · paired with ' + pick.q.sym : '');
+  $('#dImp').textContent = '−' + pct(im.drop) + ' if you dump $25K';
+  $('#bDump').textContent = `Dump $25K of $${pick.sym} into its ${fmtUsd(pick.liq)} pool and the price drops about ${pct(im.drop)}, by a constant-product estimate.`;
+  biggestBags(pick.mint).then(b => { DEAL.bags = b.filter(x => x.wallet).slice(0, 3); const rows = $$('#dstage .drow'); DEAL.bags.forEach((x, i) => { $('.dra', rows[i]).textContent = short(x.owner); $('.drb', rows[i]).textContent = fmtNum(x.amount) + ' $' + pick.sym + (pick.price ? ' · ' + fmtUsd(x.amount * pick.price) : '') }); rows.slice(DEAL.bags.length).forEach(r => { $('.dra', r).textContent = ''; }) }).catch(() => $$('#dstage .dra').forEach(t => t.textContent = 'holders offline'));
+  drawDeal(DEAL.p, performance.now());
+}
+function drawDeal(p, now) {
+  if (!DEAL.built) return; const Y = 300, at = (id, k, v) => $(id).setAttribute(k, v);
+  const im = DEAL.s ? impact(DEAL.s.liq, 25000) : { drop: .15 };
+  const dump = easeIO(seg(p, .04, .19)) * (1 - easeIO(seg(p, .25, .31)));
+  const depth = Math.max(50, Math.min(150, 40 + im.drop * 420));
+  const wv = x => Y + Math.sin(x / 30 + now / 900) * 5 * (1 - seg(p, .7, .8)) + Math.sin(x / 13 + now / 600) * 2;
+  let a = '', b = '';
+  for (let x = 24; x <= 616; x += 8) { const k = x > 360 ? Math.pow((x - 360) / 256, 1.4) : 0; const y = wv(x) + dump * depth * k; if (x <= 360) a += (a ? 'L' : 'M') + x + ',' + y.toFixed(1); if (x >= 360) b += (b ? 'L' : 'M') + x + ',' + y.toFixed(1) }
+  at('#dLine', 'd', a); at('#dDump', 'd', b);
+  const red = dump; $('#dDump').setAttribute('stroke', red > .05 ? `rgba(251,113,133,${(.4 + red * .6).toFixed(2)})` : 'rgba(200,240,248,.7)'); $('#dDump').setAttribute('stroke-dasharray', red > .05 ? '0' : '12 9');
+  const sellIn = seg(p, .02, .07) * (1 - seg(p, .22, .27)); at('#dSell', 'opacity', sellIn.toFixed(2)); at('#dSell', 'transform', `translate(560,${(150 + dump * depth * .9).toFixed(1)})`);
+  at('#dImp', 'opacity', (seg(p, .1, .15) * (1 - seg(p, .24, .28))).toFixed(2));
+  const bagsIn = seg(p, .27, .36), bagsOut = seg(p, .48, .53);
+  $$('#dstage .drow').forEach((r, i) => { const k = easeO(seg(p, .27 + i * .025, .35 + i * .025)); r.setAttribute('opacity', (k * (1 - bagsOut)).toFixed(2)); r.setAttribute('transform', `translate(${(372 + (1 - k) * 60).toFixed(1)},${108 + i * 56})`) });
+  const hi = seg(p, .4, .45) * (1 - bagsOut); at('#dHi', 'opacity', hi.toFixed(2));
+  const cur = seg(p, .36, .42); at('#dCur', 'opacity', ((bagsIn >= 1 ? 1 : 0) * (1 - bagsOut) * Math.min(1, cur * 3)).toFixed(2)); at('#dCur', 'cx', (250 + cur * 140).toFixed(1)); at('#dCur', 'cy', (240 - cur * 110).toFixed(1));
+  const domeUp = easeO(seg(p, .5, .58)), meet = easeIO(seg(p, .73, .83));
+  const dx = 230 + meet * 88, bx = 600 - easeO(seg(p, .72, .78)) * 190 - meet * 88;
+  at('#dDome', 'opacity', domeUp.toFixed(2)); at('#dDome', 'transform', `translate(${dx.toFixed(1)},${(Y - 2 + (1 - domeUp) * 120).toFixed(1)})`);
+  at('#dBowl', 'opacity', seg(p, .72, .76).toFixed(2)); at('#dBowl', 'transform', `translate(${bx.toFixed(1)},${Y + 2})`);
+  const lk = seg(p, .6, .7), lkOut = seg(p, .72, .76); at('#dLink', 'opacity', (Math.min(1, lk * 4) * (1 - lkOut)).toFixed(2)); at('#dLink', 'transform', `translate(${(230 + easeIO(lk) * 300).toFixed(1)},${(220 - Math.sin(lk * Math.PI) * 50).toFixed(1)})`);
+  const rf = seg(p, .83, .93), ring = rf > 0 && rf < 1 ? Math.sin(Math.PI * rf) : 0; at('#dRing', 'opacity', ring.toFixed(2)); at('#dRing', 'r', (80 + rf * 90).toFixed(1));
+  at('#dGlow', 'opacity', (domeUp * .4 + ring * .6 + seg(p, .85, .95) * .3).toFixed(2));
+  at('#dFilled', 'opacity', seg(p, .85, .9).toFixed(2)); at('#dFilled2', 'opacity', seg(p, .88, .94).toFixed(2));
+  const beat = p < .24 ? 0 : p < .48 ? 1 : p < .72 ? 2 : 3;
+  $$('#beats li').forEach((li, i) => { li.classList.toggle('on', i === beat); li.classList.toggle('done', i < beat) });
+  $('#drail').style.transform = `scaleX(${p.toFixed(3)})`;
+}
+function dealScroll() {
+  const sec = $('#deal'); if (!sec || $('#v-home').hidden) return;
+  const r = sec.getBoundingClientRect(); DEAL.vis = r.bottom > 0 && r.top < innerHeight;
+  DEAL.p = clamp01(-r.top / Math.max(1, r.height - innerHeight));
+}
+function dealLoop(now) { requestAnimationFrame(dealLoop); if (DEAL.vis && !document.hidden) drawDeal(DEAL.p, RM ? 0 : now) }
+let scrollQ = false;
+function onScroll() {
+  if (scrollQ) return; scrollQ = true;
+  requestAnimationFrame(() => {
+    scrollQ = false; const y = scrollY, H = document.documentElement.scrollHeight - innerHeight;
+    document.documentElement.style.setProperty('--sy', y.toFixed(0));
+    $('#sprog').style.setProperty('--p', H > 0 ? (y / H).toFixed(4) : 0);
+    $('#totop').classList.toggle('on', y > 900);
+    if (!RM) { const hp = $('.hpanel'); if (hp) hp.style.setProperty('--hp', Math.min(1, y / 650).toFixed(3)) }
+    dealScroll(); spy();
+  });
+}
+function motion() {
+  splitWords(); tilt(); buildDeal();
+  $$('.steps,.tx,.faq').forEach(e => e.classList.add('stg'));
+  $$('.step,.tx .card,.faq details,#hcard').forEach(e => e.classList.add('tilt'));
+  addEventListener('scroll', onScroll, { passive: true }); addEventListener('resize', onScroll);
+  $('#totop').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { $('#imp').classList.add('live') } }), { threshold: .15 }); io.observe($('#imp'));
+  requestAnimationFrame(dealLoop); onScroll();
+}
 
 /* ---------- top bar extras ---------- */
 function topbar() {
@@ -594,7 +740,7 @@ window.__stokz = { parseOffer, buildTrade, b64url, fromB64url, S };
 
 /* ---------- boot ---------- */
 async function boot() {
-  intro(); topbar(); heroChart(); reveals();
+  intro(); topbar(); heroChart(); reveals(); motion();
   window.addEventListener('hashchange', route); route();
   $$('#impSize button').forEach(b => b.onclick = () => { $$('#impSize button').forEach(x => x.classList.toggle('on', x === b)); paintImpact() });
   $$('.tools .chip').forEach(b => b.onclick = () => { $$('.tools .chip').forEach(x => x.classList.toggle('on', x === b)); S.sort = b.dataset.sort; S.shown = 18; paintGrid() });
@@ -604,9 +750,9 @@ async function boot() {
   if (last) { const w = providers().find(p => p[0] === last); if (w) w[1].connect({ onlyIfTrusted: true }).then(r => { const k = (r && r.publicKey) || w[1].publicKey; if (k) { WAL.pk = new PublicKey(k.toString()); WAL.p = w[1]; WAL.name = w[0]; paintWallet(); if (location.hash.startsWith('#/')) route() } }).catch(() => {}) }
   try { await loadStocks() } catch (e) { $('#grid').innerHTML = `<div class="empty" style="grid-column:1/-1">StonkFun didn't answer (${esc(e.message)}). Refresh in a moment.</div>`; $('#hcard').innerHTML = '<div class="h"><div><b>StonkFun is not answering right now</b><small>Refresh in a moment</small></div></div>'; return }
   heroStock = [...S.map.values()].filter(s => s.liq > 0 && s.img).sort((a, b) => (b.mcap || 0) - (a.mcap || 0))[0] || [...S.map.values()][0];
-  paintHeroCard(); paintBand(); paintImpact(); paintGrid(); paintFills();
+  paintHeroCard(); paintBand(); paintImpact(); paintGrid(); paintFills(); paintTape(); dealData();
   loadFills();
-  setInterval(async () => { try { const fresh = await sfList('marketCap', 60); for (const s of fresh) { const o = S.map.get(s.mint); if (o) Object.assign(o, { price: s.price, mcap: s.mcap, vol: s.vol, chg: s.chg, liq: s.liq || o.liq }) } paintBand(); paintImpact(); paintHeroCard(); if (!S.q) paintGrid() } catch {} }, 60000);
+  setInterval(async () => { try { const fresh = await sfList('marketCap', 60); for (const s of fresh) { const o = S.map.get(s.mint); if (o) Object.assign(o, { price: s.price, mcap: s.mcap, vol: s.vol, chg: s.chg, liq: s.liq || o.liq }) } paintBand(); paintImpact(); paintHeroCard(); paintTape(); if (!S.q) paintGrid() } catch {} }, 60000);
 }
 boot();
 })();
