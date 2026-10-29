@@ -53,7 +53,7 @@ window.STOKZ = { ca: '', x: '' };
         <div class="cta"><a class="btn" href="#desk">Make an offer →</a><a class="btn ghost" href="#how">How it works</a></div>
       </div>
       <div class="hr">
-        <svg id="hchart" viewBox="0 0 600 300"></svg>
+        <svg id="hchart" viewBox="0 0 600 300"></svg><div class="hhint" id="hhint">drag the halves together</div>
         <div class="hcard" id="hcard"><div class="h"><div><b>Loading StonkFun…</b><small>&nbsp;</small></div></div></div>
       </div>
     </div>
@@ -68,8 +68,22 @@ window.STOKZ = { ca: '', x: '' };
   </div>
 
   <div class="wrap sec reveal" id="impact">
-    <div class="hd"><div><div class="eyebrow">Thin pools punish size</div><h2>What a market sell does<br>to a StonkFun stock</h2><p>Estimated from each pool's live liquidity. The bigger your bag, the more of it you lose dumping it into the pool. OTC moves the bag without touching the pool.</p></div>
-      <div class="seg" id="impSize" style="width:300px"><button data-v="1000">$1K</button><button data-v="10000" class="on">$10K</button><button data-v="50000">$50K</button></div></div>
+    <div class="hd"><div><div class="eyebrow">Thin pools punish size</div><h2>Dump it,<br>or Stokz it.</h2><p>Pick a StonkFun stock and drag the size. The curve is its live pool: watch your own sell walk the price down, then see the same bag go through Stokz.</p></div></div>
+    <div class="sim card">
+      <div class="sim-l">
+        <div class="simpick" id="simPick"></div>
+        <div class="simsize"><span>Sell size</span><b class="num" id="simUsd">$25,000</b></div>
+        <input type="range" id="simR" min="0" max="1000" value="560" aria-label="Sell size">
+        <div class="simq" id="simQ"><button data-v="1000">$1K</button><button data-v="10000">$10K</button><button data-v="25000">$25K</button><button data-v="100000">$100K</button><button data-v="500000">$500K</button></div>
+        <div class="simcmp">
+          <div class="col pool"><span>Market sell into the pool</span><b class="num dn" id="simDrop">—</b><small>price after your sell</small><div class="kv num"><span>You get</span><b id="simGet">—</b></div><div class="kv num"><span>Lost to slippage</span><b class="dn" id="simLost">—</b></div></div>
+          <div class="col otc"><span>Same bag through Stokz</span><b class="num up">0.00%</b><small>price move, wallet to wallet</small><div class="kv num"><span>Offer at market</span><b id="simOtc">—</b></div><div class="kv num"><span>Kept vs dumping</span><b class="up" id="simKeep">—</b></div></div>
+        </div>
+        <div class="go-row"><a class="btn" id="simGo" href="#desk">Sell this bag OTC →</a><a class="btn ghost" id="simBags" href="#desk">See its biggest bags</a></div>
+      </div>
+      <div class="sim-r"><svg id="simCurve" viewBox="0 0 480 400"></svg><div class="simhint">Drag the dot along the curve</div></div>
+    </div>
+    <div class="imphd"><h3>The top stocks at <span class="ice num" id="impAt">$25K</span></h3><span class="mut">Click a row to open its bags</span></div>
     <div class="card imp" id="imp"><div class="row h"><span>Stock</span><span>Price</span><span>Liquidity</span><span>Price drop</span><span>You lose</span><span>Via Stokz</span><span></span></div></div>
   </div>
 
@@ -95,27 +109,32 @@ window.STOKZ = { ca: '', x: '' };
   <div class="wrap sec reveal" id="how">
     <div class="hd"><div><div class="eyebrow">How it works</div><h2>Two signatures.<br>One transaction.</h2><p>No escrow, no custody, no program holding your bag. A Stokz offer is a Solana transaction both sides sign. Until the second signature lands, nothing moves.</p></div></div>
     <div class="steps">
-      <div class="card step"><svg viewBox="0 0 320 120"><rect x="20" y="22" width="280" height="76" rx="16" fill="#0a161a" stroke="#2f4f58"/><circle cx="58" cy="60" r="18" fill="#69aac1"/><rect x="88" y="48" width="110" height="10" rx="5" fill="#a4c5cf"/><rect x="88" y="66" width="70" height="8" rx="4" fill="#20363d"/><rect x="226" y="46" width="56" height="28" rx="8" fill="#69aac1"/></svg><div class="n">01</div><h3>Pick any bag</h3><p>Open a StonkFun stock and see its biggest holders, live from the chain. Pick a wallet, or paste one.</p></div>
-      <div class="card step"><svg viewBox="0 0 320 120"><path d="M120,52 A40,40 0 0 1 200,52 Z" fill="url(#gTop)"/><path d="M120,52 A40,40 0 0 0 200,52 Z" fill="none" stroke="#2f4f58" stroke-dasharray="6 6" stroke-width="2"/><text x="160" y="116" text-anchor="middle" fill="#768a93" font-size="11" font-weight="700" letter-spacing="1.5">YOUR HALF, SIGNED</text></svg><div class="n">02</div><h3>Sign your half</h3><p>Set the amount and your price in SOL. You sign the trade and get a link. Nothing leaves your wallet yet.</p></div>
-      <div class="card step"><svg viewBox="0 0 320 120"><circle cx="160" cy="50" r="36" fill="url(#gTop)"/><path d="M124,50 L196,50" stroke="#071013" stroke-width="3"/><circle cx="160" cy="50" r="46" fill="none" stroke="#39d6a3" stroke-opacity=".5" stroke-width="2"/><text x="160" y="116" text-anchor="middle" fill="#39d6a3" font-size="11" font-weight="700" letter-spacing="1.5">FILLED</text></svg><div class="n">03</div><h3>They sign, it settles</h3><p>Send the link. When they sign, the stock and the SOL swap in one transaction. The pool never sees it, so the price doesn't move.</p></div>
+      <div class="card step s1"><svg viewBox="0 0 320 120"><g class="rowa"><rect x="20" y="14" width="280" height="40" rx="12" fill="#0a161a" stroke="#2f4f58"/><circle cx="44" cy="34" r="11" fill="#69aac1"/><rect x="64" y="28" width="96" height="9" rx="4.5" fill="#a4c5cf"/><rect x="232" y="24" width="56" height="20" rx="7" fill="#69aac1"/></g><g class="rowb"><rect x="20" y="64" width="280" height="40" rx="12" fill="#0a161a" stroke="#20363d"/><circle cx="44" cy="84" r="11" fill="#2f4f58"/><rect x="64" y="78" width="70" height="9" rx="4.5" fill="#20363d"/><rect x="232" y="74" width="56" height="20" rx="7" fill="#20363d"/></g><circle class="cur" cx="300" cy="110" r="6" fill="#39d6a3"/></svg><div class="n">01</div><h3>Pick any bag</h3><p>Open a StonkFun stock and see its biggest holders, live from the chain. Pick a wallet, or paste one.</p></div>
+      <div class="card step s2"><svg viewBox="0 0 320 120"><path d="M110,64 H210" stroke="#2f4f58" stroke-dasharray="6 6" stroke-width="2"/><g class="dome"><path d="M120,64 A40,40 0 0 1 200,64 Z" fill="url(#gTop)"/></g><g class="lnk"><rect x="214" y="18" width="84" height="26" rx="13" fill="#102127" stroke="#90d8f0"/><text x="256" y="35" text-anchor="middle" fill="#c8f0f8" font-size="11" font-weight="700" font-family="Sora">offer link</text></g></svg><div class="n">02</div><h3>Sign your half</h3><p>Set the amount and your price in SOL. You sign the trade and get a link. Nothing leaves your wallet yet.</p></div>
+      <div class="card step s3"><svg viewBox="0 0 320 120"><g class="d"><path d="M124,58 A36,36 0 0 1 196,58 Z" fill="url(#gTop)"/></g><g class="b"><path d="M124,62 A36,36 0 0 0 196,62 Z" fill="url(#gTop)"/></g><circle class="rg" cx="160" cy="60" r="48" fill="none" stroke="#39d6a3" stroke-width="2"/></svg><div class="n">03</div><h3>They sign, it settles</h3><p>Send the link. When they sign, the stock and the SOL swap in one transaction. The pool never sees it, so the price doesn't move.</p></div>
     </div>
     <div class="tx">
-      <div class="card"><h3>Nobody holds anything</h3><p>Your offer is pre-signed against a durable nonce, a one-time ticket in your own wallet (about 0.0015 SOL rent, refundable). Cancel any time: burn the ticket and the offer is dead.</p><p>If they never sign, nothing happens. If they sign, both sides settle in the same block, or neither does.</p><p class="mut" style="font-size:13px;margin:0">Every Stokz fill carries one public reference key, so anyone can audit every trade:</p><a class="ref mono" id="refLink" target="_blank" rel="noopener" style="margin-top:10px"></a></div>
-      <div class="card"><h3>What you actually sign</h3><ul class="ixs">
-        <li><div>Advance your nonce<small>Makes the offer single-use. Cancelling burns it.</small></div><span class="pill">System</span></li>
-        <li><div>Open the buyer's token account<small>Only if they don't have one yet. The buyer pays the rent.</small></div><span class="pill">ATA</span></li>
-        <li><div>Move the stock: seller → buyer<small>A plain token transfer, signed by the seller.</small></div><span class="pill">Token</span></li>
-        <li><div>Pay the SOL: buyer → seller<small>The exact price you agreed, tagged with the Stokz reference.</small></div><span class="pill g">SOL</span></li>
-      </ul></div>
+      <div class="card"><h3>Nobody holds anything</h3><p>Your offer is pre-signed against a durable nonce, a one-time ticket in your own wallet (about 0.0015 SOL rent, refundable). Cancel any time: burn the ticket and the offer is dead.</p><p>If they never sign, nothing happens. If they sign, both sides settle in the same block, or neither does.</p><p class="mut" style="font-size:13px;margin:0">Every Stokz fill carries one public reference key, so anyone can audit every trade:</p><div class="refrow"><a class="ref mono" id="refLink" target="_blank" rel="noopener"></a><button class="btn sm ghost" id="refCopy">Copy</button></div></div>
+      <div class="card insp"><div class="ph"><h3>Inspect the transaction</h3><span class="mut" style="font-size:12.5px">click an instruction</span></div>
+        <div class="txstrip" id="txStrip"><i data-i="0">nonce</i><i data-i="1">account</i><i data-i="2">stock</i><i data-i="3">SOL</i></div>
+        <ul class="ixs" id="ixs">
+          <li data-i="0" class="on"><div>Advance your nonce<small>Makes the offer single-use. Cancelling burns it.</small></div><span class="pill">System</span></li>
+          <li data-i="1"><div>Open the buyer's token account<small>Only if they don't have one yet. The buyer pays the rent.</small></div><span class="pill">ATA</span></li>
+          <li data-i="2"><div>Move the stock: seller → buyer<small>A plain token transfer, signed by the seller.</small></div><span class="pill">Token</span></li>
+          <li data-i="3"><div>Pay the SOL: buyer → seller<small>The exact price you agreed, tagged with the Stokz reference.</small></div><span class="pill g">SOL</span></li>
+        </ul>
+        <div class="ixd" id="ixd"></div>
+      </div>
     </div>
   </div>
 
   <div class="wrap sec reveal" id="desk">
     <div class="hd"><div><div class="eyebrow">The desk</div><h2>Every StonkFun stock</h2><p>Pick a stock to see its biggest bags and make an offer. Data straight from StonkFun and the Solana chain.</p></div></div>
     <div class="tools">
-      <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#768a93" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" placeholder="Search name, ticker or contract address" autocomplete="off"></label>
+      <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#768a93" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" placeholder="Search name, ticker or contract address" autocomplete="off"><kbd>/</kbd></label>
       <button class="chip on" data-sort="mcap">Market cap</button><button class="chip" data-sort="vol">24h volume</button><button class="chip" data-sort="liq">Liquidity</button><button class="chip" data-sort="new">Newest</button>
     </div>
+    <div class="cats" id="cats"></div>
     <div class="grid" id="grid"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
     <div class="more"><button class="btn ghost" id="moreBtn" hidden>Show more</button></div>
   </div>
@@ -123,10 +142,11 @@ window.STOKZ = { ca: '', x: '' };
   <div class="wrap sec reveal" id="fills">
     <div class="hd"><div><div class="eyebrow">Settled fills</div><h2>Off the pool, on the chain</h2><p>Every trade that settled through Stokz, read live from the chain by its reference key.</p></div></div>
     <div class="card fills" id="fillList"><div class="empty">Reading the chain…</div></div>
+    <div class="card verify"><div><h3>Check any transaction</h3><p class="mut">Paste a Solana transaction signature. Stokz reads it from the chain and tells you if it's a Stokz fill.</p></div><div class="vrow"><div class="inp"><input id="vSig" placeholder="Transaction signature" spellcheck="false" autocomplete="off"></div><button class="btn" id="vGo">Check</button></div><div id="vOut"></div></div>
   </div>
 
   <div class="wrap sec reveal" id="faq">
-    <div class="hd"><div><div class="eyebrow">FAQ</div><h2>Questions</h2></div></div>
+    <div class="hd"><div><div class="eyebrow">FAQ</div><h2>Questions</h2></div><div class="faqtools"><label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#768a93" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="fq" placeholder="Search the FAQ" autocomplete="off"></label><button class="chip" id="fAll">Open all</button></div></div>
     <div class="faq">
       <details class="card"><summary>Does Stokz ever hold my tokens or SOL?</summary><p>No. There is no escrow and no Stokz program. An offer is a normal Solana transaction that moves the stock from the seller to the buyer and the SOL from the buyer to the seller. It only settles once both of you have signed it.</p></details>
       <details class="card"><summary>Why doesn't the price move?</summary><p>The trade goes wallet to wallet and never touches the StonkFun pool, so the chart has nothing to react to. The pool price stays exactly where it was.</p></details>
@@ -137,7 +157,7 @@ window.STOKZ = { ca: '', x: '' };
       <details class="card"><summary>Can I get a partial fill?</summary><p>No. An offer is for one exact amount at one exact price. To split a bag, make several offers.</p></details>
       <details class="card"><summary>Is Stokz part of StonkFun?</summary><p>No. Stokz is an independent desk built on StonkFun's public data. StonkFun stocks are ordinary Solana tokens, so any two wallets can trade them directly.</p></details>
     </div>
-    <div class="end"><span>stokz · OTC for StonkFun stocks, in one transaction.</span><span>Not affiliated with StonkFun. Price-impact numbers are estimates from pool liquidity. Nothing here is financial advice.</span></div>
+    <div class="empty" id="fqNone" hidden>No question matches that. Try "fee", "cancel" or "escrow".</div>
   </div>
 </section>
 
@@ -147,6 +167,7 @@ window.STOKZ = { ca: '', x: '' };
 <section class="view wrap" id="v-me" hidden></section>
 </main>
 <div id="toast"></div>
+<div id="cursor" aria-hidden="true"></div>
 <button id="totop" aria-label="Back to top"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
 <script src="assets/web3.min.js"></script>
 <script src="assets/app.js"></script>
